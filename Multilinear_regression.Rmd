@@ -1,0 +1,271 @@
+---
+title: "BUAN6356_Homework2_Group10"
+output: html_document 
+---
+
+```{r Import packages}
+pacman::p_load(data.table, forecast, leaps, tidyverse,
+               gplots, ggplot2, ggpubr, gridExtra,
+               rpivotTable,dplyr)
+```
+
+
+
+```{r question no 1}
+airfares.df <- read.csv("Airfares.csv")
+
+# Dropping initial 4 variables for analysis
+airfares.df <- airfares.df[-c(1,2,3,4)]
+
+# Creating correlation table
+
+data_airfares <- airfares.df[-c(3,4,10,11)]
+corr_table <- cor(data_airfares)
+round(corr_table,2)
+
+# Scatterplots
+
+plot_1 <- ggplot(data_airfares ) +
+   geom_point(aes(x= NEW, y = FARE ), size = 1)
+
+plot_2 <- ggplot(data_airfares )+
+  geom_point(aes(x= COUPON, y = FARE ), size = 1)
+
+plot_3 <- ggplot(data_airfares )+
+   geom_point(aes(x= HI, y = FARE ), size = 1)
+
+plot_4 <- ggplot(data_airfares )+
+   geom_point(aes(x= S_INCOME, y = FARE ), size = 1)+
+  theme(axis.text.x = element_text(angle = 90))
+
+plot_5 <- ggplot(data_airfares )+
+   geom_point(aes(x= E_INCOME, y = FARE ), size = 1)+ 
+  theme(axis.text.x = element_text(angle = 90))
+
+plot_6 <- ggplot(data_airfares )+
+   geom_point(aes(x= S_POP, y = FARE ), size = 1)+ 
+  theme(axis.text.x = element_text(angle = 90))
+
+plot_7 <- ggplot(data_airfares )+
+   geom_point(aes(x= E_POP, y = FARE ), size = 1)+ 
+  theme(axis.text.x = element_text(angle = 90))
+
+plot_8 <- ggplot(data_airfares )+
+   geom_point(aes(x= DISTANCE, y = FARE  ), size = 1)
+  
+plot_9 <- ggplot(data_airfares )+
+   geom_point(aes(x= PAX, y = FARE  ), size = 1)
+
+
+grid.arrange(plot_1, plot_2, plot_3, plot_4, plot_5, plot_6, plot_7, plot_8, 
+             plot_9, nrow = 2)
+
+```
+
+INTERPRETATION Q1:
+
+Distance is best predictor for FARE because it has high correlation value with fare. 
+Also, scatter plot of Distance VS FARE indicates there is Strong positive linear 
+relationship between them.
+
+```{r question no 2}
+Vacation <- airfares.df %>%
+        dplyr::select(VACATION,FARE) %>%
+        group_by(VACATION) %>%
+        summarise(Count = length(VACATION),Total = nrow(airfares.df), 
+        Percent =  (length(VACATION)/nrow(airfares.df)) *100 , 
+        AvgFare = mean(FARE))
+
+Southwest <- airfares.df %>%
+        dplyr::select(SW,FARE) %>%
+        group_by(SW) %>%
+        summarise(Count = length(SW),Total = nrow(airfares.df),
+        Percent =  (length(SW)/nrow(airfares.df))* 100,
+        AvgFare = mean(FARE))
+
+Gate <- airfares.df %>%
+        dplyr::select(GATE,FARE) %>%
+        group_by(GATE) %>%
+        summarise(Count = length(GATE),Total = nrow(airfares.df),
+        Percent = (length(GATE)/nrow(airfares.df))*100, 
+        AvgFare = mean(FARE))
+
+Slot <- airfares.df %>%
+        dplyr::select(SLOT,FARE) %>%
+        group_by(SLOT) %>%
+        summarise(Count = length(SLOT),Total = nrow(airfares.df),
+        Percent = (length(SLOT)/nrow(airfares.df))*100, 
+        AvgFare = mean(FARE))
+
+Southwest
+Vacation
+Gate
+Slot
+
+```
+
+INTERPRETATIONS Q2:
+
+There is huge influence of southwest airlines on Fare. When the Airline is not available on the given route the average fare is 188.18 whereas, when it is available at a given route, the average fare is reduced to 98.38. Thus, SW seems to be the best predictor for FARE.
+
+```{r question no 3}
+set.seed(42)
+sample_size <- round(0.8 * nrow(airfares.df),0)
+train.index <- sample( c(1:nrow(airfares.df)), sample_size) 
+train.df <- airfares.df[train.index,]
+valid.df <- airfares.df[-train.index,]
+```
+
+* We have taken 80% of Training Dataset and 20% Validation Dataset.
+
+
+
+```{r question no 4}
+require(leaps)
+airfares.lm <- lm(FARE ~ ., data = train.df)
+airfares.stepwise <-  regsubsets(FARE ~ ., data = train.df, 
+                                 nbest = 1, nvmax = dim(train.df)[2], 
+                                 method = "seqrep")
+
+summary(airfares.stepwise)$which
+print("The R-squared Values:")
+summary(airfares.stepwise)$rsq
+print("The Adjusted R-squared Values:")
+summary(airfares.stepwise)$adjr2
+print("The Cp Values:")
+summary(airfares.stepwise)$cp
+```
+
+INTERPRETATION Q4:
+
+The Least Cp value obtained is 11.73 ie it will take upto 11 predictors. 
+If we consider adjusted R2, then the highest adj. R2 is 0.7760708 ie. we can take upto 12 predictors.
+So, from the above statements, since Cp value is giving less number of predictors the 11th model will be the best one. 
+
+
+ 
+```{r question no 5}
+search <- regsubsets(FARE ~ ., data = train.df, nbest = 1,
+                     nvmax = dim(train.df)[2],method = "exhaustive")
+
+# show models
+summary(search)$which
+print("The R-squared Values:")
+summary(search)$rsq
+print("The Adjusted R-squared Values:")
+summary(search)$adjr2
+print("The Cp Values:")
+summary(search)$cp
+```
+
+INTERPRETATION Q5:
+
+From cp value, 10th model has highest value so that model is best model 
+for our analysis because cp value of 10th model is almost equal to p+1. 
+In this model we have different variables like VACATION, SW, HI, E_INCOME, S_POP,E_POP,SLOT,GATE,DISTANCE,PAX.
+
+
+```{r question no 6}
+
+print("Predicting Accuracy for Stepwise Model")
+stepwise.lm<-lm(formula = FARE ~ NEW+VACATION + SW + HI +
+                  E_INCOME + S_POP + E_POP +SLOT + GATE +
+                  DISTANCE + PAX, data = train.df )
+airfares.stepwise.lm.pred <- predict(stepwise.lm,valid.df)
+accuracy(airfares.stepwise.lm.pred,valid.df$FARE)
+
+print("Predicting Accuracy of Exhaustive Model")
+exhaustive.lm<-lm(formula = FARE ~ VACATION + SW + HI + 
+                    E_INCOME + S_POP + E_POP +
+    SLOT + GATE + DISTANCE + PAX, data = train.df )
+exhaustive.lm.pred <- predict(exhaustive.lm,valid.df)
+accuracy(exhaustive.lm.pred,valid.df$FARE)
+```
+
+INTERPRETATION Q6:
+
+As per above result, Step wise is best model because RMSE value of stepwise is less as compared to RMSE value of exhaustive model so Step wise model is more accurate than exhaustive search.
+
+
+
+```{r}
+#question 7
+valid_set.df <- data.frame('COUPON' = 1.202, 'NEW' = 3, 
+                           'VACATION' = 'No', 'SW' =
+'No', 'HI' = 4442.141, 'S_INCOME' = 28760, 'E_INCOME' = 27664, 'S_POP' =
+4557004, 'E_POP' = 3195503, 'SLOT' = 'Free', 'GATE' = 'Free', 'PAX' = 12782,
+'DISTANCE' = 1976)
+
+
+avg_fare.lm<-lm(formula = FARE ~ VACATION + SW + HI + 
+                  E_INCOME + S_POP + E_POP + 
+    SLOT + GATE + DISTANCE + PAX, data = train.df )
+avg_fare.lm.pred <- predict(avg_fare.lm,valid_set.df)
+pacman::p_load(data.table, forecast, leaps, tidyverse)
+print("Average Fare Accuracy is:")
+avg_fare.lm.pred 
+
+```
+
+INTERPRETATION Q7:
+
+Using the exhaustive search model, the average fare on a route is 247.684.
+
+```{r}
+#question 8
+valid_set.df <- data.frame('COUPON' = 1.202, 'NEW' = 3, 'VACATION' = 'No', 'SW' =
+'Yes', 'HI' = 4442.141, 'S_INCOME' = 28760, 'E_INCOME' = 27664, 'S_POP' =
+4557004, 'E_POP' = 3195503, 'SLOT' = 'Free', 'GATE' = 'Free', 'PAX' = 12782,
+'DISTANCE' = 1976)
+
+avg_fare.lm1<-lm(formula = FARE ~ VACATION + SW + HI + 
+                   E_INCOME + S_POP + E_POP + 
+    SLOT + GATE + DISTANCE + PAX, data = train.df )
+avg_fare.lm1.pred <- predict(avg_fare.lm1,valid_set.df)
+print("Average Fare when SW decides to cover this route by exhaustive model:")
+avg_fare.lm1.pred
+
+print("Reduction in average fare when SW decides to cover this route by exhaustive model:")
+Red_fare<- (avg_fare.lm.pred  - avg_fare.lm1.pred)
+Red_fare
+
+```
+
+INTERPRETATION Q8:
+
+If Southwest decides to cover this route, Average Fare when SW decides to cover this route by exhaustive model is 207.1558. The average fare on the route in question 7 will reduced by 40.52822. 
+
+```{r question no 9}
+  
+airfares.bselect <- regsubsets(FARE ~ ., data = train.df, 
+                               nbest = 1, nvmax = dim(train.df)[2],
+                               method = "backward")
+summary(airfares.bselect)$which
+print("The R-squared Values:")
+summary(airfares.bselect)$rsq
+print("The Adjusted R-squared Values:")
+summary(airfares.bselect)$adjr2
+print("The Cp Values:")
+summary(airfares.bselect)$cp
+
+
+```
+
+INTERPRETATION Q9:
+When we look at the adjusted R2 values, we get the model with 12 predictors, whereas if we look at the Cp values we get the model with 10 predictors.As it is a backward search, we go on dropping the less relevant variables. Also the motive here is to get the best model with less number of predictors, we will consider the model which is predicted using Mellow's Cp value ie. model with 10 predictors.
+
+
+```{r question no 10}
+require(MASS)
+airfares.bselect <- stepAIC(airfares.lm, direction = "backward")
+summary(airfares.bselect) 
+airfares.bselect.pred <- predict(airfares.bselect, valid.df)
+accuracy(airfares.bselect.pred, valid.df$FARE)
+
+```
+
+INTERPRETATION Q10:
+
+Less value of AIC indicates the best model, as it is backward selection model,the model is dropping the less relevant variables one by one in each step. Finally, we got a model with 10 predictors ie. 
+VACATION, SW, HI, E_INCOME, S_POP, E_POP, SLOT, GATE, DISTANCE, PAX.
+    
